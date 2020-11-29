@@ -1,29 +1,29 @@
 package com.lenakurasheva.jpgtopngconverter.ui.activity
 
 import android.app.AlertDialog
-import android.content.ContextWrapper
 import android.content.DialogInterface.BUTTON_POSITIVE
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.ImageDecoder
-import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import com.lenakurasheva.jpgtopngconverter.R
-import com.lenakurasheva.jpgtopngconverter.mvp.model.IDataConverter
-import com.lenakurasheva.jpgtopngconverter.mvp.model.IDataProvider
-import com.lenakurasheva.jpgtopngconverter.mvp.model.Repository
+import com.lenakurasheva.jpgtopngconverter.mvp.model.Image
 import com.lenakurasheva.jpgtopngconverter.mvp.presenter.MainPresenter
 import com.lenakurasheva.jpgtopngconverter.mvp.view.MainView
+import com.lenakurasheva.jpgtopngconverter.ui.AndroidConverter
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import kotlinx.android.synthetic.main.activity_main.*
 import moxy.MvpAppCompatActivity
 import moxy.ktx.moxyPresenter
-import java.io.ByteArrayOutputStream
 
 
-class MainActivity : MvpAppCompatActivity(), MainView, IDataProvider, IDataConverter {
+class MainActivity : MvpAppCompatActivity(), MainView {
+
+    var androidConverter = AndroidConverter(this)
+    val presenter by moxyPresenter{
+        MainPresenter(AndroidSchedulers.mainThread(), androidConverter)
+    }
+    var alertDialog: AlertDialog? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -32,13 +32,6 @@ class MainActivity : MvpAppCompatActivity(), MainView, IDataProvider, IDataConve
         convertBtn.setOnClickListener { presenter.convertBtnClicked() }
         saveBtn.setOnClickListener { presenter.saveBtnClicked() }
     }
-
-    val presenter by moxyPresenter{
-        MainPresenter(Repository(this, this), AndroidSchedulers.mainThread())
-    }
-
-    var imageBitmap: Bitmap? = null
-    var alertDialog: AlertDialog? = null
 
     override fun showConvertStatus(status: String?) {
         alertDialog?.setMessage(status)
@@ -56,7 +49,7 @@ class MainActivity : MvpAppCompatActivity(), MainView, IDataProvider, IDataConve
     override fun disableConvertBtn(disable: Boolean) { convertBtn.isEnabled = disable }
     override fun dismissAlert() { alertDialog?.dismiss() }
 
-    override fun getJpgImage() {
+    override fun getImage() {
         val intent = Intent()
             .setType("image/jpeg")
             .setAction(Intent.ACTION_GET_CONTENT)
@@ -66,25 +59,15 @@ class MainActivity : MvpAppCompatActivity(), MainView, IDataProvider, IDataConve
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 111 && resultCode == -1) {
-            presenter.showImage(data?.data.toString())
+            val imageBitmap = androidConverter.convertUriToBitmap(data?.data, this)
+            val imageByteArr = androidConverter.convertBitmapToByteArray(imageBitmap)
+            presenter.showImage(Image(imageByteArr))
         }
     }
 
-    override fun showImage() {
-        imageBitmap?.let { imageView.setImageBitmap(it) }
-    }
-
-    override fun convertStringToBitmap(imageAddress: String?) {
-        val uriImg = Uri.parse(imageAddress)
-        uriImg?.let {
-            val source: ImageDecoder.Source =
-                ImageDecoder.createSource(this.contentResolver, it)
-            imageBitmap = ImageDecoder.decodeBitmap(source)
-        }
-    }
-
-    override fun convertByteArrayToBitmap(byteArr: ByteArray) {
-            imageBitmap = BitmapFactory.decodeByteArray(byteArr, 0, byteArr.size)
+    override fun showImage(image: Image) {
+        val imageBitmap = androidConverter.convertByteArrayToBitmap(image.byteArray)
+        imageView.setImageBitmap(imageBitmap)
     }
 
     override fun showAlert() {
@@ -101,22 +84,7 @@ class MainActivity : MvpAppCompatActivity(), MainView, IDataProvider, IDataConve
             .show()
     }
 
-    override fun convertJpgToPng(): ByteArray {
-        val out = ByteArrayOutputStream()
-        try {
-                imageBitmap?.compress(Bitmap.CompressFormat.PNG, 100, out) //100-best quality
-                out.close()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        return out.toByteArray()
-
-    }
-
-    override fun saveImage(byteArray: ByteArray) {
-        val wrapper = ContextWrapper(applicationContext)
-        val file = wrapper.getDir("PNG", MODE_PRIVATE)
-        presenter.saveImage(byteArray, file)
-    }
 }
+
+
 

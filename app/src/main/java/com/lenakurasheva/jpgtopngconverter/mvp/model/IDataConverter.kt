@@ -1,7 +1,10 @@
 package com.lenakurasheva.jpgtopngconverter.mvp.model
 
+import io.reactivex.rxjava3.core.Completable
+import io.reactivex.rxjava3.core.Single
+
 
 interface IDataConverter {
-    fun convertJpgToPng(): ByteArray
-//    fun convertStringToBitmap(imgAddress: String?)
+    fun convert(image: Image?): Single<ByteArray>
+    fun saveImage(image: Image?): Completable
 }

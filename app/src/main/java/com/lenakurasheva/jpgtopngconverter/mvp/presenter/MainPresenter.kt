@@ -1,40 +1,36 @@
 package com.lenakurasheva.jpgtopngconverter.mvp.presenter
 
-import com.lenakurasheva.jpgtopngconverter.mvp.model.Repository
+import com.lenakurasheva.jpgtopngconverter.mvp.model.IDataConverter
+import com.lenakurasheva.jpgtopngconverter.mvp.model.Image
 import com.lenakurasheva.jpgtopngconverter.mvp.view.MainView
 import io.reactivex.rxjava3.core.Scheduler
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.disposables.Disposable
 import moxy.MvpPresenter
-import java.io.File
-import java.io.FileOutputStream
-import java.util.*
 
 
-class MainPresenter(val repository: Repository, val uiScheduler: Scheduler): MvpPresenter<MainView>() {
+class MainPresenter(val uiScheduler: Scheduler, val dataConverter: IDataConverter): MvpPresenter<MainView>() {
 
-    lateinit var imageAdress: String
-    lateinit var byteArrayPngImage: ByteArray
     var disposables = CompositeDisposable()
     var convertDisposable: Disposable? = null
+
+    var imageJpg: Image? = null
+    var imagePng: Image? = null
 
     override fun onFirstViewAttach() {
         super.onFirstViewAttach()
     }
 
     fun openImgBtnClicked(){
-        repository.getJpgImage()
+        viewState.getImage()
         viewState.disableConvertBtn(false)
         viewState.disableSaveBtn(false)
     }
 
-    fun showImage(data: String?){
-        data?.let {
-            imageAdress = it
-            viewState.convertStringToBitmap(imageAdress)
-            viewState.showImage()
-            viewState.enableConvertBtn(true)
-        }
+    fun showImage(image: Image){
+        imageJpg = image
+        viewState.showImage(image)
+        viewState.enableConvertBtn(true)
     }
 
     fun convertBtnClicked(){
@@ -42,11 +38,10 @@ class MainPresenter(val repository: Repository, val uiScheduler: Scheduler): Mvp
         viewState.showConvertStatus("In Progress...")
         viewState.disableBtnOk(false)
 
-        convertDisposable = repository.convertJpgToPng()
+        convertDisposable = dataConverter.convert(imageJpg)
                 .observeOn(uiScheduler)
                 .subscribe(
-                    {
-                        byteArrayPngImage = it
+                    {   imagePng = Image(it)
                         viewState.showConvertStatus("Success")
                         viewState.enableBtnOk(true)
                         viewState.enableSaveBtn(true)
@@ -67,7 +62,7 @@ class MainPresenter(val repository: Repository, val uiScheduler: Scheduler): Mvp
 
     fun saveBtnClicked() {
         disposables.add(
-            repository.saveImage(byteArrayPngImage)
+            dataConverter.saveImage(imagePng)
             .observeOn(uiScheduler)
             .subscribe(
                 {
@@ -78,15 +73,6 @@ class MainPresenter(val repository: Repository, val uiScheduler: Scheduler): Mvp
                 }
             )
         )
-    }
-
-    fun saveImage(byteArray: ByteArray, file: File) {
-        val savingFile = File(file, "${UUID.randomUUID()}.png")
-        val fos = FileOutputStream(savingFile)
-            fos.write(byteArray)
-            fos.flush()
-            fos.close()
-            println("PATH: " + savingFile.absolutePath)
     }
 
     override fun onDestroy() {

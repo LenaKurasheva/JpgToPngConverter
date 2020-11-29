@@ -1,12 +1,14 @@
 package com.lenakurasheva.jpgtopngconverter.mvp.view
 
-import android.os.Parcelable
+import com.lenakurasheva.jpgtopngconverter.mvp.model.Image
 import moxy.MvpView
 import moxy.viewstate.strategy.alias.AddToEndSingle
 import moxy.viewstate.strategy.alias.Skip
 
 @AddToEndSingle
 interface MainView: MvpView{
+    @Skip
+    fun getImage()
 
     fun showConvertStatus(status: String?)
     @Skip
@@ -17,13 +19,10 @@ interface MainView: MvpView{
     fun enableBtnOk(enable: Boolean)
     fun disableBtnOk(disable: Boolean)
 
-    fun showImage()
+    fun showImage(image: Image)
     fun enableConvertBtn(enable: Boolean)
     fun disableConvertBtn(disable: Boolean)
 
     fun showAlert()
     fun dismissAlert()
-
-    fun convertStringToBitmap(imageAddress: String?)
-    fun convertByteArrayToBitmap(byteArr: ByteArray)
 }
