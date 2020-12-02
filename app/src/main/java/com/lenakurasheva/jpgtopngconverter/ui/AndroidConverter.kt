@@ -15,6 +15,7 @@ import moxy.MvpAppCompatActivity
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.lang.RuntimeException
 import java.util.*
 
@@ -32,12 +33,16 @@ class AndroidConverter(var context: Context): IDataConverter {
     }
 
    fun convertToPng(imageBitmap: Bitmap?): ByteArray? {
-       Thread.sleep(2000)
+       try {
+           Thread.sleep(2000)
+       } catch (e: InterruptedException) {
+           e.printStackTrace()
+       }
         val out = ByteArrayOutputStream()
         try {
             imageBitmap?.compress(Bitmap.CompressFormat.PNG, 100, out) //100-best quality
             out.close()
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             e.printStackTrace()
         }
         return out.toByteArray()
